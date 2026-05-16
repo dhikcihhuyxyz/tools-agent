@@ -9,17 +9,20 @@ load_dotenv()
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./tools_agent.db")
 
 
+def clean_database_url(url: str) -> str:
+    if not url:
+        return "sqlite:///./tools_agent.db"
+
+    return (
+        url.strip()
+        .strip('"')
+        .strip("'")
+        .replace("\ufeff", "")
+    )
+
+
 def normalize_database_url(url: str) -> str:
-    """
-    Local default:
-    sqlite:///./tools_agent.db
-
-    Supabase biasanya memberi URL:
-    postgresql://user:password@host:port/db
-
-    Untuk SQLAlchemy + pg8000, kita ubah jadi:
-    postgresql+pg8000://user:password@host:port/db
-    """
+    url = clean_database_url(url)
 
     if url.startswith("postgresql://"):
         return url.replace("postgresql://", "postgresql+pg8000://", 1)
@@ -51,7 +54,6 @@ SessionLocal = sessionmaker(
 Base = declarative_base()
 
 
-# Dependency - dipakai di setiap router
 def get_db():
     db = SessionLocal()
 
