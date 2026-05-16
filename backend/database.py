@@ -1,4 +1,5 @@
 ﻿import os
+import ssl
 from urllib.parse import urlsplit, urlunsplit
 
 from dotenv import load_dotenv
@@ -31,10 +32,10 @@ def normalize_database_url(url: str) -> str:
     url = clean_database_url(url)
 
     if url.startswith("postgresql://"):
-        url = url.replace("postgresql://", "postgresql+pg8000://", 1)
+        return url.replace("postgresql://", "postgresql+pg8000://", 1)
 
     if url.startswith("postgres://"):
-        url = url.replace("postgres://", "postgresql+pg8000://", 1)
+        return url.replace("postgres://", "postgresql+pg8000://", 1)
 
     return url
 
@@ -44,11 +45,12 @@ def remove_sslmode_query(url: str) -> str:
         return url
 
     parts = urlsplit(url)
-    query_items = []
 
-    for item in parts.query.split("&"):
-        if item and not item.startswith("sslmode="):
-            query_items.append(item)
+    query_items = [
+        item
+        for item in parts.query.split("&")
+        if item and not item.startswith("sslmode=")
+    ]
 
     return urlunsplit(
         (
@@ -70,11 +72,14 @@ if DATABASE_URL.startswith("sqlite"):
 
 if DATABASE_URL.startswith("postgresql+pg8000"):
     DATABASE_URL = remove_sslmode_query(DATABASE_URL)
-    connect_args = {"ssl_context": True}
+    connect_args = {
+        "ssl_context": ssl.create_default_context()
+    }
 
 engine = create_engine(
     DATABASE_URL,
     connect_args=connect_args,
+    pool_pre_ping=True,
 )
 
 SessionLocal = sessionmaker(
