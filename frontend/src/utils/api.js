@@ -4,7 +4,7 @@ function getBaseURL() {
   const envURL = import.meta.env.VITE_API_URL;
 
   // Untuk deploy Vercel:
-  // VITE_API_URL=https://nama-backend-render.onrender.com
+  // VITE_API_URL=https://tools-agent-api.vercel.app
   if (envURL) {
     return envURL;
   }
@@ -17,8 +17,6 @@ function getBaseURL() {
   }
 
   // Untuk akses lokal dari HP lewat WiFi yang sama
-  // Contoh frontend: http://192.168.18.5:3000
-  // Backend otomatis: http://192.168.18.5:8000
   return `http://${hostname}:8000`;
 }
 
@@ -40,10 +38,20 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (res) => res,
   (err) => {
-    if (err.response?.status === 401) {
+    const status = err.response?.status;
+    const url = err.config?.url || "";
+
+    const isAuthEndpoint =
+      url.includes("/api/auth/me") ||
+      url.includes("/api/auth/login");
+
+    if (status === 401 && isAuthEndpoint) {
       localStorage.removeItem("token");
       localStorage.removeItem("user");
-      window.location.href = "/login";
+
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
     }
 
     return Promise.reject(err);
