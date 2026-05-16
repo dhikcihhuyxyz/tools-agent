@@ -1,0 +1,1 @@
+﻿// GeneratePanel - parameter & tombol generate
