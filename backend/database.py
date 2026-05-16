@@ -40,17 +40,27 @@ def normalize_database_url(url: str) -> str:
     return url
 
 
-def remove_sslmode_query(url: str) -> str:
-    if "sslmode=" not in url:
-        return url
-
+def remove_unsupported_postgres_query(url: str) -> str:
     parts = urlsplit(url)
 
-    query_items = [
-        item
-        for item in parts.query.split("&")
-        if item and not item.startswith("sslmode=")
-    ]
+    if not parts.query:
+        return url
+
+    blocked_keys = {
+        "sslmode",
+        "channel_binding",
+    }
+
+    query_items = []
+
+    for item in parts.query.split("&"):
+        if not item:
+            continue
+
+        key = item.split("=", 1)[0]
+
+        if key not in blocked_keys:
+            query_items.append(item)
 
     return urlunsplit(
         (
@@ -71,7 +81,7 @@ if DATABASE_URL.startswith("sqlite"):
     connect_args = {"check_same_thread": False}
 
 if DATABASE_URL.startswith("postgresql+pg8000"):
-    DATABASE_URL = remove_sslmode_query(DATABASE_URL)
+    DATABASE_URL = remove_unsupported_postgres_query(DATABASE_URL)
     connect_args = {
         "ssl_context": ssl.create_default_context()
     }
