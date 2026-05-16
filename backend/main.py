@@ -25,9 +25,16 @@ from routers import (
 
 load_dotenv()
 
-os.makedirs("uploads/images", exist_ok=True)
-os.makedirs("uploads/videos", exist_ok=True)
-os.makedirs("uploads/temp", exist_ok=True)
+
+def is_vercel():
+    return os.getenv("VERCEL") == "1"
+
+
+UPLOAD_ROOT = "/tmp/uploads" if is_vercel() else "uploads"
+
+os.makedirs(f"{UPLOAD_ROOT}/images", exist_ok=True)
+os.makedirs(f"{UPLOAD_ROOT}/videos", exist_ok=True)
+os.makedirs(f"{UPLOAD_ROOT}/temp", exist_ok=True)
 
 Base.metadata.create_all(bind=engine)
 
@@ -66,7 +73,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.mount("/static/uploads", StaticFiles(directory="uploads"), name="uploads")
+app.mount("/static/uploads", StaticFiles(directory=UPLOAD_ROOT), name="uploads")
 
 app.include_router(auth.router, prefix="/api/auth", tags=["Auth"])
 app.include_router(api_vault.router, prefix="/api/vault", tags=["API Vault"])
