@@ -70,16 +70,19 @@ async def upload_file(
             detail=f"Format tidak didukung: {file.content_type}",
         )
 
-    ext = file.filename.split(".")[-1].lower()
+    original_filename = file.filename or "upload.bin"
+    ext = original_filename.split(".")[-1].lower()
     temp_name = f"{uuid.uuid4().hex}.{ext}"
-    temp_path = f"uploads/temp/{temp_name}"
 
-    os.makedirs("uploads/temp", exist_ok=True)
+    temp_dir = "/tmp/uploads/temp" if os.getenv("VERCEL") == "1" else "uploads/temp"
+    os.makedirs(temp_dir, exist_ok=True)
 
-    with open(temp_path, "wb") as f:
-        shutil.copyfileobj(file.file, f)
+    temp_path = os.path.join(temp_dir, temp_name)
 
     try:
+        with open(temp_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+
         resource_type = "video" if file_type == "video" else "image"
 
         result = cloudinary.uploader.upload(
@@ -98,6 +101,12 @@ async def upload_file(
 
         print(f"[Cloudinary] Upload success: {public_url}")
 
+        return {
+            "url": public_url,
+            "filename": temp_name,
+            "type": file_type,
+        }
+
     except HTTPException:
         raise
 
@@ -110,12 +119,6 @@ async def upload_file(
     finally:
         if os.path.exists(temp_path):
             os.remove(temp_path)
-
-    return {
-        "url": public_url,
-        "filename": temp_name,
-        "type": file_type,
-    }
 
 
 # ─── Generate Video ───────────────────────────────
@@ -183,12 +186,12 @@ async def generate_video(
     print(f"[Generate] Full response: {result}")
 
     task_id = (
-        result.get("task_id") or
-        result.get("id") or
-        result.get("taskId") or
-        result.get("data", {}).get("task_id") or
-        result.get("data", {}).get("id") or
-        result.get("data", {}).get("taskId")
+        result.get("task_id")
+        or result.get("id")
+        or result.get("taskId")
+        or result.get("data", {}).get("task_id")
+        or result.get("data", {}).get("id")
+        or result.get("data", {}).get("taskId")
     )
 
     if not task_id:
